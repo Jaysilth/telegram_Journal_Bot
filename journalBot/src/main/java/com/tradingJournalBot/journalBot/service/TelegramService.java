@@ -1,6 +1,7 @@
 package com.tradingJournalBot.journalBot.service;
 
 import lombok.RequiredArgsConstructor;
+import lombok.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
@@ -12,7 +13,8 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class TelegramService {
 
-    private final String BOT_TOKEN = "8579181160:AAEKUay5Uaf-uzxsnWOc-I4WrxWXnmxa7BA";
+    @Value("${telegram.bot.token}")
+    private String BOT_TOKEN ;
     private final String CHAT_ID = "8295076839";
     private final RestTemplate restTemplate;
 

@@ -86,7 +86,7 @@ public class ParserService {
 
             // STRATEGY
             else if (lower.startsWith("strategy")) {
-                dto.strategy = extractText(line, "Strategy").trim().toLowerCase();
+                dto.strategy = normalizeStrategy(extractText(line, "Strategy"));
                 dto.notes = message.trim();
             }
 
@@ -147,6 +147,15 @@ public class ParserService {
         return parts[1].trim();
     }
 
+    private String normalizeStrategy(String strategy) {
+
+        if (strategy == null) return null;
+
+        strategy = strategy.trim().toLowerCase();
+
+        // capitalize first letter
+        return strategy.substring(0, 1).toUpperCase() + strategy.substring(1);
+    }
     // 🔥 VALIDATION
     private void validate(ParsedTradeDTO dto) {
 

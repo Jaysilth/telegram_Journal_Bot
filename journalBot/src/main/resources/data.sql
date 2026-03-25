@@ -1,0 +1,1 @@
+-- UPDATE trade SET strategy = LOWER(strategy);
