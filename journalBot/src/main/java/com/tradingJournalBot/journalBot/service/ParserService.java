@@ -29,12 +29,25 @@ public class ParserService {
             // SYMBOL + DIRECTION
             if (lower.contains("buy") || lower.contains("sell")) {
 
-                if (lower.contains("btc")) dto.symbol = "BTCUSDT";
-                else if (lower.contains("eth")) dto.symbol = "ETHUSDT";
-                else throw new RuntimeException("Unsupported symbol");
+                String[] parts = line.split("\\s+");
 
-                if (lower.contains("buy")) dto.direction = Direction.BUY;
-                else dto.direction = Direction.SELL;
+                if (parts.length < 2) {
+                    throw new RuntimeException("Invalid format. Use: SYMBOL BUY/SELL");
+                }
+
+                // 🔥 SYMBOL (first word)
+                dto.symbol = parts[0].toUpperCase();
+
+                // 🔥 DIRECTION (second word)
+                String dir = parts[1].toLowerCase();
+
+                if (dir.equals("buy")) {
+                    dto.direction = Direction.BUY;
+                } else if (dir.equals("sell")) {
+                    dto.direction = Direction.SELL;
+                } else {
+                    throw new RuntimeException("Direction must be BUY or SELL");
+                }
             }
 
             // ENTRY
@@ -55,15 +68,26 @@ public class ParserService {
             // SESSION
             else if (lower.startsWith("session")) {
 
-                if (lower.contains("london")) dto.session = Session.LONDON;
-                else if (lower.contains("new york")) dto.session = Session.NEW_YORK;
-                else if (lower.contains("asia")) dto.session = Session.ASIA;
-                else throw new RuntimeException("Invalid session");
+                String value = line.split(":")[1].trim().toLowerCase().replaceAll("\\s|-", "");
+
+                if (value.equals("london")) {
+                    dto.session = Session.LONDON;
+
+                } else if (value.equals("newyork") || value.equals("ny")) {
+                    dto.session = Session.NEW_YORK;
+
+                } else if (value.equals("asia")) {
+                    dto.session = Session.ASIA;
+
+                } else {
+                    throw new RuntimeException("Invalid session (use London, New York, or Asia)");
+                }
             }
 
             // STRATEGY
             else if (lower.startsWith("strategy")) {
-                dto.strategy = extractText(line, "Strategy");
+                dto.strategy = extractText(line, "Strategy").trim().toLowerCase();
+                dto.notes = message.trim();
             }
 
             // EMOTION
@@ -74,11 +98,24 @@ public class ParserService {
             }
 
             // OUTCOME
-             if (lower.contains("final outcome")) {
+            else if (lower.startsWith("outcome")) {
 
-                 if (lower.contains("tp")) dto.win = true;
-                 else if (lower.contains("sl")) dto.win = false;
-             }
+                String[] parts = line.split(":");
+
+                if (parts.length < 2) {
+                    throw new RuntimeException("Outcome format is invalid. Use: Outcome: TP or SL");
+                }
+
+                String value = parts[1].trim().toLowerCase();
+
+                if (value.equals("tp")) {
+                    dto.win = true;
+                } else if (value.equals("sl")) {
+                    dto.win = false;
+                } else {
+                    throw new RuntimeException("Outcome must be TP or SL");
+                }
+            }
         }
 
         dto.notes = message;
