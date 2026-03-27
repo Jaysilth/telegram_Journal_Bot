@@ -22,28 +22,28 @@ public class AnalyticsService {
 
 
     // 🔥 RUNS EVERY WEEK (MONDAY 00:00)
-    @Scheduled(cron =  "0 */1 * * * *")// "0 0 0 * * MON")
+    @Scheduled(cron = "0 0 0 * * MON")
     public void weeklyAnalysis() {
 
-        LocalDateTime oneWeekAgo = LocalDateTime.now().minusDays(7);
+        try {
+            LocalDateTime oneWeekAgo = LocalDateTime.now().minusDays(7);
 
-        List<Trade> trades = repo.findByLocalDateTimeAfter(oneWeekAgo);
+            List<Trade> trades = repo.findByLocalDateTimeAfter(oneWeekAgo);
 
-        if (trades.isEmpty()) {
-            System.out.println("No trades this week.");
-            return;
-        }
+            if (trades.isEmpty()) {
+                System.out.println("No trades this week.");
+                return;
+            }
 
-        int total = trades.size();
-        int wins = 0;
-        double totalRR = 0;
+            int total = trades.size();
+            int wins = 0;
+            double totalRR = 0;
 
-        Map<String, Integer> sessionWins = new HashMap<>();
-        Map<String, Integer> sessionTotal = new HashMap<>();
+            Map<String, Integer> sessionWins = new HashMap<>();
+            Map<String, Integer> sessionTotal = new HashMap<>();
 
-        Map<String, Double> strategyRR = new HashMap<>();
-        Map<String, Integer> strategyCount = new HashMap<>();
-
+            Map<String, Double> strategyRR = new HashMap<>();
+            Map<String, Integer> strategyCount = new HashMap<>();
 
 
             for (Trade trade : trades) {
@@ -76,134 +76,135 @@ public class AnalyticsService {
             }
 
 
-        double winRate = (wins * 100.0) / total;
-        double expectancy = totalRR / total;
+            double winRate = (wins * 100.0) / total;
+            double expectancy = totalRR / total;
 
-      //  BEST & WORST SESSION
-        String bestSession = null;
-        double bestSessionWR = 0;
+            //  BEST & WORST SESSION
+            String bestSession = null;
+            double bestSessionWR = 0;
 
-        String worstSession = null;
-        double worstSessionWR = 100;
+            String worstSession = null;
+            double worstSessionWR = 100;
 
-        for (String session : sessionTotal.keySet()) {
+            for (String session : sessionTotal.keySet()) {
 
-            int totalTrades = sessionTotal.get(session);
-            int winCount = sessionWins.getOrDefault(session, 0);
+                int totalTrades = sessionTotal.get(session);
+                int winCount = sessionWins.getOrDefault(session, 0);
 
-            double wr = (winCount * 100.0) / totalTrades;
+                double wr = (winCount * 100.0) / totalTrades;
 
-            if (wr > bestSessionWR) {
-                bestSessionWR = wr;
-                bestSession = session;
+                if (wr > bestSessionWR) {
+                    bestSessionWR = wr;
+                    bestSession = session;
+                }
+
+                if (wr < worstSessionWR) {
+                    worstSessionWR = wr;
+                    worstSession = session;
+                }
             }
-
-            if (wr < worstSessionWR) {
-                worstSessionWR = wr;
-                worstSession = session;
-            }
-        }
 
 // 🔍 BEST & WORST STRATEGY
-        String bestStrategy = null;
-        double bestStrategyExp = Double.MIN_VALUE;
+            String bestStrategy = null;
+            double bestStrategyExp = Double.MIN_VALUE;
 
-        String worstStrategy = null;
-        double worstStrategyExp = Double.MAX_VALUE;
+            String worstStrategy = null;
+            double worstStrategyExp = Double.MAX_VALUE;
 
-        for (String strategy : strategyCount.keySet()) {
+            for (String strategy : strategyCount.keySet()) {
 
-            double totalStrategyRR = strategyRR.get(strategy);
-            int count = strategyCount.get(strategy);
+                double totalStrategyRR = strategyRR.get(strategy);
+                int count = strategyCount.get(strategy);
 
-            expectancy = totalStrategyRR / count;
+                expectancy = totalStrategyRR / count;
 
-            if (expectancy > bestStrategyExp) {
-                bestStrategyExp = expectancy;
-                bestStrategy = strategy;
+                if (expectancy > bestStrategyExp) {
+                    bestStrategyExp = expectancy;
+                    bestStrategy = strategy;
+                }
+
+                if (expectancy < worstStrategyExp) {
+                    worstStrategyExp = expectancy;
+                    worstStrategy = strategy;
+                }
             }
 
-            if (expectancy < worstStrategyExp) {
-                worstStrategyExp = expectancy;
-                worstStrategy = strategy;
+
+            StringBuilder report = new StringBuilder();
+
+            report.append("📊WEEKLY TRADING REPORT\n\n");
+            report.append("💯Total Trades: ").append(total).append("\n");
+            report.append("🏆Win Rate: ").append(String.format("%.2f",winRate)).append("%\n");
+            report.append("🔬Expectancy: ").append(String.format("%.2f",expectancy)).append("R\n\n");
+
+            report.append("💡SESSION PERFORMANCE\n");
+
+            for (String session : sessionTotal.keySet()) {
+
+                int totalTrades = sessionTotal.get(session);
+                int winCount = sessionWins.getOrDefault(session, 0);
+
+                double wr = (winCount * 100.0) / totalTrades;
+
+               report.append(session)
+                       .append(": ")
+                       .append(String.format("%.2f",wr))
+                       .append("% (")
+                       .append(totalTrades)
+                       .append(" trades)\n");
             }
+
+            report.append("\n 🏹STRATEGY PERFORMANCE\n");
+
+            for (String strategy : strategyCount.keySet()) {
+
+                double totalStrategyRR = strategyRR.get(strategy);
+                int count = strategyCount.get(strategy);
+
+                double exp = totalStrategyRR / count;
+
+                report.append(strategy)
+                        .append(": ")
+                        .append(String.format("%.2f", exp))
+                        .append("R (")
+                        .append(String.format("%.2f", totalStrategyRR))
+                        .append("R total, ")
+                        .append(count)
+                        .append(" trades)\n");
+
+
+            }
+
+
+            report.append("\n🗿 AI INSIGHTS\n");
+
+            report.append("🔥Best Session: ")
+                    .append(bestSession)
+                    .append(" (")
+                    .append(String.format("%.2f", bestSessionWR))
+                    .append("%)\n");
+
+            report.append("⚠️Worst Session: ")
+                    .append(worstSession)
+                    .append(" (")
+                    .append(String.format("%.2f", worstSessionWR))
+                    .append("%)\n");
+
+            report.append("✅Best Strategy: ").append(bestStrategy).append("\n");
+            report.append("⚠️Worst Strategy: ").append(worstStrategy).append("\n");
+
+            if (expectancy > 0) {
+                report.append("✅ Strategy has an edge");
+            } else {
+                report.append("❌ No edge detected");
+            }
+
+
+            Long myChatId = 8295076839L;
+            telegramService.sendMessage(myChatId, report.toString());
+        } catch (Exception e) {
+            System.out.println("weekly report failed: " + e.getMessage());
         }
-
-
-        StringBuilder report = new StringBuilder();
-
-        report.append("📊WEEKLY TRADING REPORT\n\n");
-        report.append("💯Total Trades: ").append(total).append("\n");
-        report.append("🏆Win Rate: ").append(String.format("%.2f",winRate)).append("%\n");
-        report.append("🔬Expectancy: ").append(String.format("%.2f",expectancy)).append("R\n\n");
-
-        report.append("💡SESSION PERFORMANCE\n");
-
-        for (String session : sessionTotal.keySet()) {
-
-            int totalTrades = sessionTotal.get(session);
-            int winCount = sessionWins.getOrDefault(session, 0);
-
-            double wr = (winCount * 100.0) / totalTrades;
-
-           report.append(session)
-                   .append(": ")
-                   .append(String.format("%.2f",wr))
-                   .append("% (")
-                   .append(totalTrades)
-                   .append(" trades)\n");
-        }
-
-        report.append("\n 🏹STRATEGY PERFORMANCE\n");
-
-        for (String strategy : strategyCount.keySet()) {
-
-            double totalStrategyRR = strategyRR.get(strategy);
-            int count = strategyCount.get(strategy);
-
-            double exp = totalStrategyRR / count;
-
-            report.append(strategy)
-                    .append(": ")
-                    .append(String.format("%.2f", exp))
-                    .append("R (")
-                    .append(String.format("%.2f", totalStrategyRR))
-                    .append("R total, ")
-                    .append(count)
-                    .append(" trades)\n");
-
-
-        }
-
-
-
-        report.append("\n🗿 AI INSIGHTS\n");
-
-        report.append("🔥Best Session: ")
-                .append(bestSession)
-                .append(" (")
-                .append(String.format("%.2f", bestSessionWR))
-                .append("%)\n");
-
-        report.append("⚠️Worst Session: ")
-                .append(worstSession)
-                .append(" (")
-                .append(String.format("%.2f", worstSessionWR))
-                .append("%)\n");
-
-        report.append("✅Best Strategy: ").append(bestStrategy).append("\n");
-        report.append("⚠️Worst Strategy: ").append(worstStrategy).append("\n");
-
-        if (expectancy > 0) {
-            report.append("✅ Strategy has an edge");
-        } else {
-            report.append("❌ No edge detected");
-        }
-
-       // telegramService.sendMessage(report.toString());
-
-        Long myChatId = 8295076839L;
-        telegramService.sendMessage(myChatId, report.toString());
     }
 }
 

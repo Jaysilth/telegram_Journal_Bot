@@ -6,9 +6,9 @@ import com.tradingJournalBot.journalBot.model.Session;
 public class ParsedTradeDTO {
     public String symbol;
     public Direction direction;
-    public double entry;
-    public double sl;
-    public double tp;
+    public Double entry;
+    public Double sl;
+    public Double tp;
 
     public Boolean win;
     public Session session;

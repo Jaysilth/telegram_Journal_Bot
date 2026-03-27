@@ -24,48 +24,77 @@ public class TelegramWebhookController {
 
         System.out.println(" webhook hit");
 
+        Map<String, Object> message = (Map<String, Object>) update.get("message");
+        if (message == null) return;
+
+        String text = (String) message.get("text");
+        if (text == null) return;
+
+        Map<String, Object> chat = (Map<String, Object>) message.get("chat");
+        Long chatId = ((Number) chat.get("id")).longValue();
+
         try {
-            // 🔍 Navigate Telegram JSON
-            Map<String, Object> message = (Map<String, Object>) update.get("message");
 
-            if (message == null) return;
-
-            String text = (String) message.get("text");
-
-            if (text == null) return;
-
-            if (text.equalsIgnoreCase("/start")){
-                System.out.println("bot don start");
+            // ✅ START COMMAND
+            if (text.equalsIgnoreCase("/start")) {
+                telegramService.sendMessage(chatId, "👋 Bot is live! Send your trade.");
+                return;
             }
 
-            System.out.println("message received" + text);
+            // ✅ STEP 4: REPORT COMMAND
+           else if (text.equalsIgnoreCase("/report")) {
+                String report = tradeService.generateReport();
+                telegramService.sendMessage(chatId, report);
+                return;
+            }
+
+
+            else if (text.equalsIgnoreCase("/dashboard")) {
+                String dashboard = tradeService.getPerformanceDashboard();
+                telegramService.sendMessage(chatId, dashboard);
+                return;
+            }
+
+            else if (text.equalsIgnoreCase("/coach")) {
+                String feedback = tradeService.getCoachFeedback();
+                telegramService.sendMessage(chatId, feedback);
+                return;
+            }
+
+            System.out.println("message received " + text);
 
             var dto = parserService.parse(text);
 
             var savedTrade = tradeService.saveTrade(dto);
 
-// 🔥 GET CHAT ID
-            Map<String, Object> chat = (Map<String, Object>) message.get("chat");
-           // Integer chatId = (Integer) chat.get("id");
-            Long chatId = ((Number) chat.get("id")).longValue();
-
-// 🔥 BUILD RESPONSE
             String response = "✅ Trade Logged\n\n"
                     + "📊 " + savedTrade.getSymbol() + " " + savedTrade.getDirection() + "\n"
                     + "RR: " + String.format("%.2f", savedTrade.getRiskReward()) + "R\n"
                     + "Session: " + savedTrade.getSession() + "\n"
                     + "Strategy: " + savedTrade.getStrategy();
 
-// 🔥 SEND MESSAGE
             telegramService.sendMessage(chatId, response);
 
+        } catch (NumberFormatException e) {
+
+            telegramService.sendMessage(chatId, "❌ Invalid number format (check Entry, SL, TP)");
+
+        } catch (IllegalArgumentException e) {
+
+            telegramService.sendMessage(chatId, "❌ " + e.getMessage());
+
+        } catch (RuntimeException e) {
+
+            telegramService.sendMessage(chatId, "❌ " + e.getMessage());
+
         } catch (Exception e) {
+
+            telegramService.sendMessage(chatId, "❌ Something went wrong. Check your format and try again.");
             e.printStackTrace();
         }
+
     }
 }
-
-
 
 
 

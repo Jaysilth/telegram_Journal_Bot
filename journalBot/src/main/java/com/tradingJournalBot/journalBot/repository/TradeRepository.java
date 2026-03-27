@@ -10,4 +10,8 @@ import java.util.List;
 @Repository
 public interface TradeRepository extends JpaRepository<Trade, Long> {
     List<Trade> findByLocalDateTimeAfter(LocalDateTime date);
+
+   // List<Trade> findByUserId(Long userId);
+
+    List<Trade> findAllByOrderByLocalDateTimeAsc();
 }

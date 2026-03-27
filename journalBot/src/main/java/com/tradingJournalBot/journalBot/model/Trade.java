@@ -26,20 +26,21 @@ public class Trade {
     private double stopLoss;
     private double takeProfit;
 
-    private double riskReward;
+    private Double riskReward;
     private double pnl;
 
+
     @Column(name = "is_win")
-    private boolean win;
+    private Boolean win;
 
     @Enumerated(EnumType.STRING)
     private Session session;
 
     private String strategy;
 
-    private boolean confident;
-    private boolean anxious;
-    private boolean fearful;
+    private Boolean confident;
+    private Boolean anxious;
+    private Boolean fearful;
 
     @Column(length = 1000)
     private String notes;

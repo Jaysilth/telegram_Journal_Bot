@@ -4,10 +4,7 @@ import com.tradingJournalBot.journalBot.dto.ParsedTradeDTO;
 import com.tradingJournalBot.journalBot.model.Trade;
 import com.tradingJournalBot.journalBot.service.ParserService;
 import com.tradingJournalBot.journalBot.service.TradeService;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 
 @RestController
@@ -35,6 +32,12 @@ public class TelegramController {
         }
 
     }
+    @GetMapping("/dashboard")
+    public String dashboard() {
+
+        return service.getPerformanceDashboard();
+    }
+
 }
 
 
