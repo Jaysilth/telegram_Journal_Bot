@@ -21,18 +21,19 @@ public class TradeService {
     private final TradeRepository repo;
 
 
-    public Trade saveTrade(ParsedTradeDTO dto) {
+    public Trade saveTrade(ParsedTradeDTO dto, Long chatId) {
 
         double rr = calculateRR(dto);
         double pnl = calculatePnL(dto);
 
         Trade trade = Trade.builder()
                 .symbol(dto.symbol)
+                .chatId(chatId)
                 .direction(dto.direction)
                 .entryPrice(dto.entry)
                 .stopLoss(dto.sl)
                 .takeProfit(dto.tp)
-                .win(dto.win)
+                .resultType(dto.res)
                 .riskReward(rr)
                 .pnl(pnl)
                 .session(dto.session)
@@ -121,9 +122,9 @@ public class TradeService {
     }
 
     // ✅ STEP 5: REPORT GENERATOR
-    public String generateReport() {
+    public String generateReport(Long chatId) {
 
-        List<Trade> trades = repo.findAllByOrderByLocalDateTimeAsc();
+        List<Trade> trades = repo.findByChatIdOrderByLocalDateTimeAsc(chatId);
 
         if (trades.isEmpty()) {
             return "📭 No trades logged yet.";
@@ -381,9 +382,9 @@ public class TradeService {
 
     }
 
-    public String getPerformanceDashboard() {
+    public String getPerformanceDashboard(Long chatId) {
 
-        List<Trade> trades = repo.findAllByOrderByLocalDateTimeAsc();
+        List<Trade> trades = repo.findByChatIdOrderByLocalDateTimeAsc(chatId);
 
         if (trades.isEmpty()) {
             return "📭 No trades available for dashboard.";
@@ -505,10 +506,10 @@ public class TradeService {
                 + feedback + "\n";
     }
 
-    public String getCoachFeedback() {
+    public String getCoachFeedback(Long chatId) {
 
 
-        List<Trade> trades = repo.findAll();
+        List<Trade> trades = repo.findByChatIdOrderByLocalDateTimeAsc(chatId);
         int totalTrades = trades.size();
 
         double winRate = calculateWinRate(trades);
@@ -561,6 +562,94 @@ public class TradeService {
         coach.append("\n🔥 Discipline > Strategy. Fix behavior, results will follow.");
 
         return coach.toString();
+    }
+
+    public String getBehaviorAnalysis(Long chatId) {
+
+        List<Trade> trades = repo.findByChatIdOrderByLocalDateTimeAsc(chatId);
+
+        if (trades.isEmpty()) return "No trades yet.";
+
+        StringBuilder result = new StringBuilder();
+        result.append("🧠 Behavior Analysis\n\n");
+
+        int revengeCount = 0;
+        int overtradingFlag = 0;
+        int maxLossStreak = 0;
+        int currentLossStreak = 0;
+
+        int fearfulLosses = 0;
+        int anxiousLosses = 0;
+
+        for (int i = 0; i < trades.size(); i++) {
+
+            Trade current = trades.get(i);
+
+            // 🔴 LOSS STREAK
+            if (!current.getWin()) {
+                currentLossStreak++;
+                maxLossStreak = Math.max(maxLossStreak, currentLossStreak);
+            } else {
+                currentLossStreak = 0;
+            }
+
+            // 🔴 EMOTIONAL LOSSES
+            if (!current.getWin()) {
+                if (Boolean.TRUE.equals(current.getFearful())) fearfulLosses++;
+                if (Boolean.TRUE.equals(current.getAnxious())) anxiousLosses++;
+            }
+
+            // 🔴 REVENGE TRADING
+            if (i > 0) {
+                Trade prev = trades.get(i - 1);
+
+                if (!prev.getWin()) {
+                    long minutes = java.time.Duration.between(
+                            prev.getLocalDateTime(),
+                            current.getLocalDateTime()
+                    ).toMinutes();
+
+                    if (minutes <= 15) {
+                        revengeCount++;
+                    }
+                }
+            }
+        }
+
+        // 🔴 OVERTRADING (simple version)
+        if (trades.size() >= 10) {
+            overtradingFlag = 1;
+        }
+
+        // 📊 OUTPUT
+
+        if (revengeCount > 0) {
+            result.append("⚠️ Revenge trading detected (" + revengeCount + " times)\n");
+        }
+
+        if (overtradingFlag == 1) {
+            result.append("⚠️ You may be overtrading. Reduce frequency.\n");
+        }
+
+        if (maxLossStreak >= 2) {
+            result.append("⚠️ Losing streak detected (Max: " + maxLossStreak + ")\n");
+        }
+
+        if (fearfulLosses > 0) {
+            result.append("😨 Fear impacted " + fearfulLosses + " losing trades\n");
+        }
+
+        if (anxiousLosses > 0) {
+            result.append("😰 Anxiety impacted " + anxiousLosses + " losing trades\n");
+        }
+
+        if (result.toString().equals("🧠 Behavior Analysis\n\n")) {
+            result.append("✅ No major behavioral issues detected. Stay disciplined.");
+        }
+
+        result.append("\n\n🔥 Control behavior → Control outcomes.");
+
+        return result.toString();
     }
 
 

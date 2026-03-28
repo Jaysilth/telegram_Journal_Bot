@@ -24,7 +24,8 @@ public class TelegramController {
 
         try {
             ParsedTradeDTO dto = parser.parse(message);
-            Trade trade = service.saveTrade(dto);
+            Long testChatId = 1L;
+            Trade trade = service.saveTrade(dto, testChatId);
 
             return "Trade saved successfully. ID: " + trade.getId();
         } catch (Exception e) {
@@ -35,7 +36,8 @@ public class TelegramController {
     @GetMapping("/dashboard")
     public String dashboard() {
 
-        return service.getPerformanceDashboard();
+        Long testChatId = 1L;
+        return service.getPerformanceDashboard(testChatId);
     }
 
 }

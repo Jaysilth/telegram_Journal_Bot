@@ -17,6 +17,8 @@ public class Trade {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    private Long chatId;
+
     private String symbol;
 
     @Enumerated(EnumType.STRING)
@@ -30,8 +32,8 @@ public class Trade {
     private double pnl;
 
 
-    @Column(name = "is_win")
-    private Boolean win;
+    @Enumerated(EnumType.STRING)
+    private ResultType resultType;
 
     @Enumerated(EnumType.STRING)
     private Session session;

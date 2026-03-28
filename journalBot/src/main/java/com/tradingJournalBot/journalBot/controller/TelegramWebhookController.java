@@ -43,21 +43,27 @@ public class TelegramWebhookController {
 
             // ✅ STEP 4: REPORT COMMAND
            else if (text.equalsIgnoreCase("/report")) {
-                String report = tradeService.generateReport();
+                String report = tradeService.generateReport(chatId);
                 telegramService.sendMessage(chatId, report);
                 return;
             }
 
 
             else if (text.equalsIgnoreCase("/dashboard")) {
-                String dashboard = tradeService.getPerformanceDashboard();
+                String dashboard = tradeService.getPerformanceDashboard(chatId);
                 telegramService.sendMessage(chatId, dashboard);
                 return;
             }
 
             else if (text.equalsIgnoreCase("/coach")) {
-                String feedback = tradeService.getCoachFeedback();
+                String feedback = tradeService.getCoachFeedback(chatId);
                 telegramService.sendMessage(chatId, feedback);
+                return;
+            }
+
+            else if (text.equalsIgnoreCase("/behavior")) {
+                String behavior = tradeService.getBehaviorAnalysis(chatId);
+                telegramService.sendMessage(chatId, behavior);
                 return;
             }
 
@@ -65,7 +71,7 @@ public class TelegramWebhookController {
 
             var dto = parserService.parse(text);
 
-            var savedTrade = tradeService.saveTrade(dto);
+            var savedTrade = tradeService.saveTrade(dto, chatId);
 
             String response = "✅ Trade Logged\n\n"
                     + "📊 " + savedTrade.getSymbol() + " " + savedTrade.getDirection() + "\n"

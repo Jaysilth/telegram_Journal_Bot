@@ -1,6 +1,7 @@
 package com.tradingJournalBot.journalBot.dto;
 
 import com.tradingJournalBot.journalBot.model.Direction;
+import com.tradingJournalBot.journalBot.model.ResultType;
 import com.tradingJournalBot.journalBot.model.Session;
 
 public class ParsedTradeDTO {
@@ -13,6 +14,8 @@ public class ParsedTradeDTO {
     public Boolean win;
     public Session session;
     public String strategy;
+
+    private ResultType resultType;
 
     public boolean confident;
     public boolean anxious;
