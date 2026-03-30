@@ -15,7 +15,7 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class TelegramService {
 
-    @Value("${telegram.bot.token}")
+    @Value("${TELEGRAM_BOT_TOKEN}")
     private String botToken ;
 
     private final RestTemplate restTemplate;
