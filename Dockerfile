@@ -28,4 +28,4 @@ EXPOSE 8080
 ENTRYPOINT ["java", "-jar", "app.jar"]
 
 # syntax=docker/dockerfile:1
-FROM eclipse
+FROM eclipse-temurin
