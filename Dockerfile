@@ -1,7 +1,7 @@
 FROM eclipse-temurin:21-jdk AS builder
 WORKDIR /app
 # Copy wrapper and resolve dependencies (cache layer)
-COPY pom.xml mvnw mvnw.cmd ./.mvn ./
+COPY pom.xml mvnw mvnw.cmd ./.mvn ./ && chmod +x mvnw
 RUN ./mvnw dependency:go-offline -B
 # Copy source and build
 COPY src ./src
