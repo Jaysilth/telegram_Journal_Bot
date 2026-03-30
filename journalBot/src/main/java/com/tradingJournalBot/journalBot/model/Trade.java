@@ -24,9 +24,11 @@ public class Trade {
     @Enumerated(EnumType.STRING)
     private Direction direction;
 
-    private double entryPrice;
-    private double stopLoss;
-    private double takeProfit;
+    private Double entryPrice;
+    private Double stopLoss;
+    private Double takeProfit;
+
+    private Double missedRR;
 
     private Double riskReward;
     private double pnl;
@@ -51,6 +53,11 @@ public class Trade {
     private LocalDateTime localDateTime;
 
     public Boolean getWin() {
-        return win;
+
+        if(resultType == null) return null;
+
+        if(resultType == ResultType.MISSED_ENTRY) return null;
+
+        return resultType == ResultType.TP;
     }
 }

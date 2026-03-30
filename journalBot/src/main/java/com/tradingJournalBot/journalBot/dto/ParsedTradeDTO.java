@@ -11,11 +11,10 @@ public class ParsedTradeDTO {
     public Double sl;
     public Double tp;
 
-    public Boolean win;
     public Session session;
     public String strategy;
 
-    private ResultType resultType;
+    public ResultType resultType;
 
     public boolean confident;
     public boolean anxious;

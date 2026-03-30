@@ -1,5 +1,6 @@
 package com.tradingJournalBot.journalBot.controller;
 
+import com.tradingJournalBot.journalBot.model.ResultType;
 import com.tradingJournalBot.journalBot.service.ParserService;
 import com.tradingJournalBot.journalBot.service.TelegramService;
 import com.tradingJournalBot.journalBot.service.TradeService;
@@ -61,6 +62,36 @@ public class TelegramWebhookController {
                 return;
             }
 
+            else if (text.equalsIgnoreCase("/missed")) {
+
+                long missed = tradeService.countMissedTrades(chatId);
+
+                telegramService.sendMessage(chatId,
+                        "👀 Missed Trades: " + missed + "\n" +
+                                (missed > 0
+                                        ? "⚠️ You are hesitating on valid setups."
+                                        : "✅ No hesitation detected. Good execution.")
+                );
+
+                return;
+            }
+
+            else if (text.equalsIgnoreCase("/psychology")) {
+
+                String behavior = tradeService.getBehaviorAnalysis(chatId);
+                long missed = tradeService.countMissedTrades(chatId);
+
+                String response = behavior + "\n\n👀 Missed Trades: " + missed;
+
+                if (missed >= 3) {
+                    response += "\n⚠️ Pattern: You're hesitating — likely fear-based.";
+                }
+
+                telegramService.sendMessage(chatId, response);
+
+                return;
+            }
+
             else if (text.equalsIgnoreCase("/behavior")) {
                 String behavior = tradeService.getBehaviorAnalysis(chatId);
                 telegramService.sendMessage(chatId, behavior);
@@ -73,13 +104,32 @@ public class TelegramWebhookController {
 
             var savedTrade = tradeService.saveTrade(dto, chatId);
 
-            String response = "✅ Trade Logged\n\n"
-                    + "📊 " + savedTrade.getSymbol() + " " + savedTrade.getDirection() + "\n"
-                    + "RR: " + String.format("%.2f", savedTrade.getRiskReward()) + "R\n"
-                    + "Session: " + savedTrade.getSession() + "\n"
-                    + "Strategy: " + savedTrade.getStrategy();
+            String response;
+
+            if (savedTrade.getResultType() == ResultType.MISSED_ENTRY) {
+
+                response = "👀 Missed Trade Logged\n\n"
+                        + "📊 " + savedTrade.getSymbol() + " " + savedTrade.getDirection() + "\n"
+                        + "Session: " + savedTrade.getSession() + "\n"
+                        + "Strategy: " + savedTrade.getStrategy() + "\n\n"
+                        + "⚠️ You saw the setup but didn’t execute.";
+
+            } else {
+
+                response = "✅ Trade Logged\n\n"
+                        + "📊 " + savedTrade.getSymbol() + " " + savedTrade.getDirection() + "\n"
+                        + "RR: " + String.format("%.2f", savedTrade.getRiskReward()) + "R\n"
+                        + "Session: " + savedTrade.getSession() + "\n"
+                        + "Strategy: " + savedTrade.getStrategy();
+            }
 
             telegramService.sendMessage(chatId, response);
+
+            String warning = tradeService.getExecutionWarning(chatId);
+
+            if (warning != null) {
+                response += "\n\n" + warning;
+            }
 
         } catch (NumberFormatException e) {
 

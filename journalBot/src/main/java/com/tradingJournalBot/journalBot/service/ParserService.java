@@ -2,6 +2,7 @@ package com.tradingJournalBot.journalBot.service;
 
 import com.tradingJournalBot.journalBot.dto.ParsedTradeDTO;
 import com.tradingJournalBot.journalBot.model.Direction;
+import com.tradingJournalBot.journalBot.model.ResultType;
 import com.tradingJournalBot.journalBot.model.Session;
 import org.springframework.stereotype.Service;
 
@@ -14,12 +15,43 @@ public class ParserService {
 
     public ParsedTradeDTO parse(String message) {
 
+        // 🔥 QUICK PARSE MODE (TradingView / Simple Input)
+        String lowerMsg = message.toLowerCase();
+
+        if (!message.contains("\n")) {
+
+            ParsedTradeDTO quick = new ParsedTradeDTO();
+
+            String[] parts = message.split("\\s+");
+
+            if (parts.length >= 3) {
+
+                quick.symbol = parts[0].toUpperCase();
+
+                if (parts[1].equalsIgnoreCase("buy"))
+                    quick.direction = Direction.BUY;
+                else if (parts[1].equalsIgnoreCase("sell"))
+                    quick.direction = Direction.SELL;
+
+                if (parts[2].equalsIgnoreCase("tp"))
+                    quick.resultType = ResultType.TP;
+                else if (parts[2].equalsIgnoreCase("sl"))
+                    quick.resultType = ResultType.SL;
+                else if (parts[2].equalsIgnoreCase("missed"))
+                    quick.resultType = ResultType.MISSED_ENTRY;
+            }
+
+            // fallback to normal parsing if incomplete
+            if (quick.symbol != null && quick.direction != null && quick.resultType != null) {
+                return quick;
+            }
+        }
+
         if (message == null || message.isBlank()) {
             throw new IllegalArgumentException("Message is empty");
         }
-
-        if (!message.toLowerCase().contains("entry")) {
-            throw new IllegalArgumentException("❌ Invalid format");
+        if (!message.toLowerCase().contains("outcome")) {
+            throw new IllegalArgumentException("❌ Outcome is required (TP, SL, Missed)");
         }
 
         ParsedTradeDTO dto = new ParsedTradeDTO();
@@ -132,23 +164,34 @@ public class ParserService {
             }
 
             // OUTCOME
-            else if (lower.startsWith("outcome")) {
+            else if (lower.startsWith("outcome") || lower.equals("missed")) {
 
-                String[] parts = line.split(":");
+                String value;
 
-                if (parts.length < 2) {
-                    errors.add("Outcome format is invalid. Use: Outcome: TP or SL");
-                    continue;
+                if (lower.equals("missed")) {
+                    value = "missed";
+                } else {
+                    String[] parts = line.split(":");
+
+                    if (parts.length < 2) {
+                        errors.add("Outcome format invalid. Use: Outcome: TP, SL or Missed");
+                        continue;
+                    }
+
+                    value = parts[1].trim().toLowerCase();
                 }
 
-                String value = parts[1].trim().toLowerCase();
-
                 if (value.equals("tp")) {
-                    dto.win = true;
+                    dto.resultType = ResultType.TP;
+
                 } else if (value.equals("sl")) {
-                    dto.win = false;
+                    dto.resultType = ResultType.SL;
+
+                } else if (value.equals("missed")) {
+                    dto.resultType = ResultType.MISSED_ENTRY;
+
                 } else {
-                    errors.add("Outcome must be TP or SL");
+                    errors.add("Outcome must be TP, SL or Missed");
                 }
             }
         }
@@ -222,23 +265,26 @@ public class ParserService {
         if (dto.direction == null)
             errors.add("Direction missing (BUY or SELL)");
 
-        if (dto.entry == null)
-            errors.add("Entry missing");
-
-        if (dto.sl == null)
-            errors.add("Stop Loss missing");
-
-        if (dto.tp == null)
-            errors.add("Take Profit missing");
-
         if (dto.session == null)
             errors.add("Session missing");
 
         if (dto.strategy == null || dto.strategy.isBlank())
             errors.add("Strategy missing");
 
-        if (dto.win == null)
-            errors.add("Outcome missing (TP or SL)");
+        if (dto.resultType == null)
+            errors.add("Outcome missing (TP, SL, Missed)");
+
+        // 🔥 ONLY REQUIRE PRICES IF NOT MISSED
+        if (dto.resultType != ResultType.MISSED_ENTRY) {
+
+            if (dto.entry == null)
+                errors.add("Entry missing");
+
+            if (dto.sl == null)
+                errors.add("Stop Loss missing");
+
+            if (dto.tp == null)
+                errors.add("Take Profit missing");
+        }
     }
 }
-

@@ -1,12 +1,15 @@
 package com.tradingJournalBot.journalBot.service;
 
 import com.tradingJournalBot.journalBot.dto.ParsedTradeDTO;
+import com.tradingJournalBot.journalBot.model.ResultType;
 import com.tradingJournalBot.journalBot.model.Session;
 import com.tradingJournalBot.journalBot.model.Trade;
 import com.tradingJournalBot.journalBot.repository.TradeRepository;
 import lombok.Data;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.ArrayList;
@@ -16,24 +19,41 @@ import java.util.stream.Collectors;
 
 @Service
 @Data
+@RequiredArgsConstructor
 public class TradeService {
 
     private final TradeRepository repo;
+    // 🔥 SAFE WIN CHECK (GLOBAL FIX)
+    private boolean isWin(Trade trade) {
+        return trade.getResultType() == ResultType.TP;
+    }
+
+    // 🔥 SAFE LOSS CHECK
+    private boolean isLoss(Trade trade) {
+        return trade.getResultType() == ResultType.SL;
+    }
+
 
 
     public Trade saveTrade(ParsedTradeDTO dto, Long chatId) {
 
-        double rr = calculateRR(dto);
-        double pnl = calculatePnL(dto);
+        double rr = 0;
+        double pnl = 0;
+
+        if (dto.resultType != ResultType.MISSED_ENTRY){
+            rr= calculateRR(dto);
+            pnl = calculatePnL(dto);
+        }
 
         Trade trade = Trade.builder()
                 .symbol(dto.symbol)
                 .chatId(chatId)
                 .direction(dto.direction)
-                .entryPrice(dto.entry)
-                .stopLoss(dto.sl)
-                .takeProfit(dto.tp)
-                .resultType(dto.res)
+                // 🔥 FIX (avoid null crash in DB logic)
+                .entryPrice(dto.entry != null ? dto.entry : null)
+                .stopLoss(dto.sl != null ? dto.sl : null)
+                .takeProfit(dto.tp != null ? dto.tp : null)
+                .resultType(dto.resultType)
                 .riskReward(rr)
                 .pnl(pnl)
                 .session(dto.session)
@@ -107,19 +127,58 @@ public class TradeService {
             reward = dto.entry - dto.tp;
         }
 
+        if (risk == 0){
+            throw new IllegalArgumentException("risk cannot be zero");
+        }
+
         return reward / risk;
     }
 
     private double calculatePnL(ParsedTradeDTO dto) {
 
+        if (dto.resultType == ResultType.MISSED_ENTRY) {
+            return 0;
+        }
+
         double rr = calculateRR(dto);
 
-        if (dto.win) {
-            return rr;
-        } else {
-            return -1;
-        }
+       return dto.resultType == ResultType.TP ? rr : -1;
     }
+
+
+    public long countMissedTrades(Long chatId) {
+        return repo.countByChatIdAndResultType(chatId, ResultType.MISSED_ENTRY);
+    }
+
+    public String getExecutionWarning(Long chatId) {
+
+        List<Trade> trades = repo.findByChatIdOrderByLocalDateTimeAsc(chatId);
+
+        if (trades.size() < 2) return null;
+
+        Trade last = trades.get(trades.size() - 1);
+        Trade prev = trades.get(trades.size() - 2);
+
+        // ⚠️ Missed after loss → hesitation
+        if (prev.getResultType() == ResultType.SL &&
+                last.getResultType() == ResultType.MISSED_ENTRY) {
+
+            return "⚠️ You hesitated after a loss. This leads to revenge trading.";
+        }
+
+        // ⚠️ Missed streak
+        long missedStreak = trades.stream()
+                .skip(Math.max(0, trades.size() - 3))
+                .filter(t -> t.getResultType() == ResultType.MISSED_ENTRY)
+                .count();
+
+        if (missedStreak >= 2) {
+            return "⚠️ You're consistently hesitating. Confidence issue detected.";
+        }
+
+        return null;
+    }
+
 
     // ✅ STEP 5: REPORT GENERATOR
     public String generateReport(Long chatId) {
@@ -146,7 +205,7 @@ public class TradeService {
 
         for (Trade trade : trades) {
 
-            if (Boolean.TRUE.equals(trade.getWin())) {
+            if (isWin(trade)) {
 
                 currentWinStreak++;
                 currentLossStreak = 0;
@@ -174,9 +233,9 @@ public class TradeService {
                 .mapToDouble(Trade::getPnl)
                 .sum();
 
-        double winRate = (wins * 100.0) / total;
+        double winRate = total == 0 ? 0 : (wins * 100.0) / total;
 
-        double avgRR = totalRR/total;
+        double avgRR = total == 0 ? 0 : totalRR/total;
 
         // 🔥 SESSION BREAKDOWN
         Map<Session, List<Trade>> sessionMap = trades.stream()
@@ -200,7 +259,7 @@ public class TradeService {
                     .filter(t -> Boolean.TRUE.equals(t.getWin()))
                     .count();
 
-            double sessionWinRate = (sessionWins * 100.0) / sessionTotal;
+            double sessionWinRate =sessionTotal == 0 ? 0 : (sessionWins * 100.0) / sessionTotal;
 
 
             sessionReport.append(session)
@@ -264,7 +323,7 @@ public class TradeService {
                     .mapToDouble(Trade::getPnl)
                     .sum();
 
-            double avgRRStrategy = totalRRStrategy / strategyTotal;
+            double avgRRStrategy = strategyTotal == 0 ? 0 : totalRRStrategy / strategyTotal;
 
             strategyReport.append(strategy)
                     .append(" → Trades: ").append(strategyTotal)
@@ -329,7 +388,7 @@ public class TradeService {
                     .filter(t -> Boolean.TRUE.equals(t.getWin()))
                     .count();
 
-            double winRateEmotion = (winsEmotion * 100.0) / totalEmotionTrades;
+            double winRateEmotion = totalEmotionTrades == 0 ? 0 :(winsEmotion * 100.0) / totalEmotionTrades;
 
             double pnlEmotion = emotionTrades.stream()
                     .mapToDouble(Trade::getPnl)
@@ -363,6 +422,8 @@ public class TradeService {
 
 
 
+
+
         return "📊 Trading Report\n\n"
                 + "Total Trades: " + total + "\n"
                 + "Wins: " + wins + "\n"
@@ -391,6 +452,10 @@ public class TradeService {
         }
 
         int total = trades.size();
+
+        long missed = trades.stream()
+                .filter(t -> t.getResultType() == ResultType.MISSED_ENTRY)
+                .count();
 
         long wins = trades.stream()
                 .filter(t -> Boolean.TRUE.equals(t.getWin()))
@@ -490,7 +555,8 @@ public class TradeService {
                 + "Trades: " + total + "\n"
                 + "Win Rate: " + String.format("%.2f", winRate) + "%\n"
                 + "Net PnL: " + String.format("%.2f", pnl) + "R\n"
-                + "Avg RR: " + String.format("%.2f", avgRR) + "R\n\n"
+                + "Avg RR: " + String.format("%.2f", avgRR) + "R\n"
+                + "Missed Trades: " + missed + "\n\n"
 
                 + "🎯 Trade Quality\n"
                 + "A+: " + aPlus + " | A: " + a + " | B: " + b + " | C: " + c + "\n\n"
@@ -581,50 +647,113 @@ public class TradeService {
         int fearfulLosses = 0;
         int anxiousLosses = 0;
 
+        int missedTrades = 0;
+
+        int revengeLossLoop = 0;
+        int confidenceMistakes = 0;
+        int fearMisses = 0;
+
+        Map<String, Integer> strategyLossMap = new HashMap<>();
+        Map<String, Integer> sessionLossMap = new HashMap<>();
+
         for (int i = 0; i < trades.size(); i++) {
 
             Trade current = trades.get(i);
 
-            // 🔴 LOSS STREAK
-            if (!current.getWin()) {
-                currentLossStreak++;
-                maxLossStreak = Math.max(maxLossStreak, currentLossStreak);
-            } else {
-                currentLossStreak = 0;
-            }
-
-            // 🔴 EMOTIONAL LOSSES
-            if (!current.getWin()) {
-                if (Boolean.TRUE.equals(current.getFearful())) fearfulLosses++;
-                if (Boolean.TRUE.equals(current.getAnxious())) anxiousLosses++;
-            }
-
-            // 🔴 REVENGE TRADING
+            // 🔁 LOSS → REVENGE → LOSS LOOP
             if (i > 0) {
                 Trade prev = trades.get(i - 1);
 
-                if (!prev.getWin()) {
-                    long minutes = java.time.Duration.between(
+                if (isLoss(prev) && isLoss(current)) {
+                    long minutes = Duration.between(
                             prev.getLocalDateTime(),
                             current.getLocalDateTime()
                     ).toMinutes();
 
                     if (minutes <= 15) {
+                        revengeLossLoop++;
+                    }
+                }
+            }
+
+// 🎭 CONFIDENCE MISTAKE
+            if (Boolean.TRUE.equals(current.getConfident()) && isLoss(current)) {
+                confidenceMistakes++;
+            }
+
+// 😬 FEAR → MISSED
+            if (current.getResultType() == ResultType.MISSED_ENTRY &&
+                    Boolean.TRUE.equals(current.getFearful())) {
+                fearMisses++;
+            }
+
+// 📉 STRATEGY TRACKING
+            if (isLoss(current) && current.getStrategy() != null) {
+                strategyLossMap.put(
+                        current.getStrategy(),
+                        strategyLossMap.getOrDefault(current.getStrategy(), 0) + 1
+                );
+            }
+
+// 📉 SESSION TRACKING
+            if (isLoss(current) && current.getSession() != null) {
+                sessionLossMap.put(
+                        current.getSession().name(),
+                        sessionLossMap.getOrDefault(current.getSession().name(), 0) + 1
+                );
+            }
+
+            // 🔥 MISSED COUNT
+            if (current.getResultType() == ResultType.MISSED_ENTRY) {
+                missedTrades++;
+            }
+
+            // 🔥 LOSS STREAK (SAFE)
+            if (isLoss(current)) {
+                currentLossStreak++;
+                maxLossStreak = Math.max(maxLossStreak, currentLossStreak);
+            } else if (isWin(current)) {
+                currentLossStreak = 0;
+            }
+
+            // 🔥 EMOTIONAL LOSSES (SAFE)
+            if (isLoss(current)) {
+                if (Boolean.TRUE.equals(current.getFearful())) fearfulLosses++;
+                if (Boolean.TRUE.equals(current.getAnxious())) anxiousLosses++;
+            }
+
+            // 🔥 REVENGE TRADING (SAFE)
+            if (i > 0) {
+                Trade prev = trades.get(i - 1);
+
+                if (isLoss(prev)) {
+
+                    long minutes = java.time.Duration.between(
+                            prev.getLocalDateTime(),
+                            current.getLocalDateTime()
+                    ).toMinutes();
+
+                    if (minutes > 0 && minutes <= 15) {
                         revengeCount++;
                     }
                 }
             }
         }
 
-        // 🔴 OVERTRADING (simple version)
         if (trades.size() >= 10) {
             overtradingFlag = 1;
         }
 
         // 📊 OUTPUT
 
+        if (missedTrades > 0) {
+            result.append("👀 Missed ").append(missedTrades)
+                    .append(" valid trades — hesitation detected\n");
+        }
+
         if (revengeCount > 0) {
-            result.append("⚠️ Revenge trading detected (" + revengeCount + " times)\n");
+            result.append("⚠️ Revenge trading detected (")
+                    .append(revengeCount).append(" times)\n");
         }
 
         if (overtradingFlag == 1) {
@@ -632,16 +761,52 @@ public class TradeService {
         }
 
         if (maxLossStreak >= 2) {
-            result.append("⚠️ Losing streak detected (Max: " + maxLossStreak + ")\n");
+            result.append("⚠️ Losing streak detected (Max: ")
+                    .append(maxLossStreak).append(")\n");
         }
 
         if (fearfulLosses > 0) {
-            result.append("😨 Fear impacted " + fearfulLosses + " losing trades\n");
+            result.append("😨 Fear impacted ")
+                    .append(fearfulLosses).append(" losing trades\n");
         }
 
         if (anxiousLosses > 0) {
-            result.append("😰 Anxiety impacted " + anxiousLosses + " losing trades\n");
+            result.append("😰 Anxiety impacted ")
+                    .append(anxiousLosses).append(" losing trades\n");
         }
+
+        if (revengeLossLoop > 0) {
+            result.append("🔥 Emotional revenge loop detected (")
+                    .append(revengeLossLoop)
+                    .append(" times)\n");
+        }
+
+        if (confidenceMistakes > 0) {
+            result.append("🎭 Overconfidence detected (")
+                    .append(confidenceMistakes)
+                    .append(" losses)\n");
+        }
+
+        if (fearMisses > 0) {
+            result.append("😬 Fear caused ")
+                    .append(fearMisses)
+                    .append(" missed trades\n");
+        }
+
+        // 🔥 WORST STRATEGY
+        strategyLossMap.entrySet().stream()
+                .max(Map.Entry.comparingByValue())
+                .ifPresent(entry -> result.append("📉 Strategy underperforming: ")
+                        .append(entry.getKey())
+                        .append("\n"));
+
+// 🔥 WORST SESSION
+        sessionLossMap.entrySet().stream()
+                .max(Map.Entry.comparingByValue())
+                .ifPresent(entry -> result.append("📉 Weak session: ")
+                        .append(entry.getKey())
+                        .append("\n"));
+
 
         if (result.toString().equals("🧠 Behavior Analysis\n\n")) {
             result.append("✅ No major behavioral issues detected. Stay disciplined.");
