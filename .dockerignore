@@ -1,0 +1,8 @@
+target
+**/*.log
+.git
+.vscode
+.idea
+.DS_Store
+README.md
+
