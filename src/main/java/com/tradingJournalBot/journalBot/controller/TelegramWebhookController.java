@@ -128,7 +128,7 @@ public class TelegramWebhookController {
             String warning = tradeService.getExecutionWarning(chatId);
 
             if (warning != null) {
-                response += "\n\n" + warning;
+                telegramService.sendMessage(chatId,warning);
             }
 
         } catch (NumberFormatException e) {
