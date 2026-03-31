@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RestController;
+import java.util.concurrent.ConcurrentHashMap;
 
 import java.util.Map;
 
@@ -21,8 +22,12 @@ public class TelegramWebhookController {
     private final TradeService tradeService;
     private final TelegramService telegramService;
 
+    private final Map<Long, Long> userLastRequestTime = new ConcurrentHashMap<>();
+
     @Value("${TELEGRAM_WEBHOOK_SECRET:}")
     private String webhookSecret ;
+
+
 
 
     @PostMapping("/webhook")
@@ -30,7 +35,12 @@ public class TelegramWebhookController {
                                  String incomingSecret,
                                @RequestBody  Map<String, Object> update) {
 
+
+
         System.out.println(" webhook hit");
+
+
+
 
 
         if (webhookSecret != null && !webhookSecret.isEmpty()){
@@ -48,6 +58,11 @@ public class TelegramWebhookController {
 
         Map<String, Object> chat = (Map<String, Object>) message.get("chat");
         Long chatId = ((Number) chat.get("id")).longValue();
+
+        if (isRateLimited(chatId)) {
+            telegramService.sendMessage(chatId, "⏳ Slow down, you're sending too fast.");
+            return;
+        }
 
         try {
 
@@ -165,6 +180,24 @@ public class TelegramWebhookController {
         }
 
     }
+
+    private boolean isRateLimited(Long chatId) {
+
+        long currentTime = System.currentTimeMillis();
+
+        if (userLastRequestTime.containsKey(chatId)) {
+
+            long lastTime = userLastRequestTime.get(chatId);
+
+            if ((currentTime - lastTime) < 2000) {
+                return true; // 🚫 too fast
+            }
+        }
+
+        userLastRequestTime.put(chatId, currentTime);
+        return false;
+    }
+
 }
 
 
