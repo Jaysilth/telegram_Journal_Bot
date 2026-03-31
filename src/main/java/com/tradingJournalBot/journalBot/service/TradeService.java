@@ -250,19 +250,6 @@ public class TradeService {
         return null;
     }
 
-//        long now = System.currentTimeMillis();
-//
-//        long recentTrades = trades.stream()
-//                .filter(t -> t.getCreatedAt() != null)
-//                .filter(t -> now - t.getCreatedAt().getTime() < (10 * 60 * 1000)) // last 10 mins
-//                .count();
-//
-//        if (recentTrades >= 5) {
-//            return "⚠️ You're trading too frequently in a short time. Possible revenge trading.";
-//        }
-//
-//        return null;
-//    }
 
 
     // ✅ STEP 5: REPORT GENERATOR
