@@ -157,6 +157,13 @@ public class TelegramWebhookController {
 
             String warning = tradeService.getExecutionWarning(chatId);
 
+            // ✅ NEW: Behavior warning
+            String behaviorWarning = tradeService.detectOvertrading(chatId);
+
+            if (behaviorWarning != null) {
+                telegramService.sendMessage(chatId, behaviorWarning);
+            }
+
             if (warning != null) {
                 telegramService.sendMessage(chatId,warning);
             }

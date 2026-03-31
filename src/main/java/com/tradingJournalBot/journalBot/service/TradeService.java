@@ -23,6 +23,55 @@ import java.util.stream.Collectors;
 public class TradeService {
 
     private final TradeRepository repo;
+
+    private void validateTradeInput(ParsedTradeDTO dto) {
+
+        if (dto.getSymbol() == null || dto.getSymbol().isBlank()) {
+            throw new IllegalArgumentException("Symbol is required");
+        }
+
+        if (dto.getDirection() == null) {
+            throw new IllegalArgumentException("Direction (buy/sell) is required");
+        }
+
+        if (dto.getEntry() == null || dto.getSl() == null || dto.getTp() == null) {
+            throw new IllegalArgumentException("Entry, SL and TP must be provided");
+        }
+
+        double entry = dto.getEntry();
+        double sl = dto.getSl();
+        double tp = dto.getTp();
+
+        if (entry <= 0 || sl <= 0 || tp <= 0) {
+            throw new IllegalArgumentException("Prices must be greater than 0");
+        }
+
+        // 🔥 LOGICAL VALIDATION
+        if ("buy".equalsIgnoreCase(String.valueOf(dto.getDirection()))) {
+
+            if (sl >= entry) {
+                throw new IllegalArgumentException("For BUY: SL must be below entry");
+            }
+
+            if (tp <= entry) {
+                throw new IllegalArgumentException("For BUY: TP must be above entry");
+            }
+
+        } else if ("sell".equalsIgnoreCase(String.valueOf(dto.getDirection()))) {
+
+            if (sl <= entry) {
+                throw new IllegalArgumentException("For SELL: SL must be above entry");
+            }
+
+            if (tp >= entry) {
+                throw new IllegalArgumentException("For SELL: TP must be below entry");
+            }
+
+        } else {
+            throw new IllegalArgumentException("Direction must be BUY or SELL");
+        }
+    }
+
     // 🔥 SAFE WIN CHECK (GLOBAL FIX)
     private boolean isWin(Trade trade) {
         return trade.getResultType() == ResultType.TP;
@@ -37,6 +86,8 @@ public class TradeService {
 
     public Trade saveTrade(ParsedTradeDTO dto, Long chatId) {
 
+
+        validateTradeInput(dto);
         double rr = 0;
         double pnl = 0;
 
@@ -44,6 +95,7 @@ public class TradeService {
             rr= calculateRR(dto);
             pnl = calculatePnL(dto);
         }
+
 
         Trade trade = Trade.builder()
                 .symbol(dto.symbol)
@@ -87,6 +139,7 @@ public class TradeService {
         return savedTrade;
 
     }
+
 
 
     // ✅ STEP 1 FIXED RR (SAFE + VALIDATED)
@@ -174,6 +227,24 @@ public class TradeService {
 
         if (missedStreak >= 2) {
             return "⚠️ You're consistently hesitating. Confidence issue detected.";
+        }
+
+        return null;
+    }
+
+    public String detectOvertrading(Long chatId) {
+
+        List<Trade> trades = repo.findByChatId(chatId);
+
+        long now = System.currentTimeMillis();
+
+        long recentTrades = trades.stream()
+                .filter(t -> t.getCreatedAt() != null)
+                .filter(t -> now - t.getCreatedAt().getTime() < (10 * 60 * 1000)) // last 10 mins
+                .count();
+
+        if (recentTrades >= 5) {
+            return "⚠️ You're trading too frequently in a short time. Possible revenge trading.";
         }
 
         return null;

@@ -3,7 +3,9 @@ package com.tradingJournalBot.journalBot.dto;
 import com.tradingJournalBot.journalBot.model.Direction;
 import com.tradingJournalBot.journalBot.model.ResultType;
 import com.tradingJournalBot.journalBot.model.Session;
+import lombok.Data;
 
+@Data
 public class ParsedTradeDTO {
     public String symbol;
     public Direction direction;

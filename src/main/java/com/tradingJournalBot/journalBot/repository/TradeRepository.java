@@ -38,4 +38,5 @@ public interface TradeRepository extends JpaRepository<Trade, Long> {
             ResultType resultType
     );
 
+    List<Trade> findByChatId(Long chatId);
 }
