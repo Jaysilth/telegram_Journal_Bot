@@ -4,7 +4,6 @@ import lombok.RequiredArgsConstructor;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.HashMap;
@@ -33,7 +32,7 @@ public class TelegramService {
         try {
             restTemplate.postForObject(url, body, String.class);
         } catch (Exception e) {
-            System.out.println("Failed to send telegram message: " + e.getMessage());;
+            System.out.println("Failed to send telegram message: " + e.getMessage());
         }
     }
 }

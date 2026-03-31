@@ -149,10 +149,10 @@ public class TradeService {
             throw new IllegalArgumentException("Direction missing");
 
         if (dto.entry == null || dto.sl == null || dto.tp == null)
-        throw new IllegalArgumentException("Entry, SL and TP must be provided");
+            throw new IllegalArgumentException("Entry, SL and TP must be provided");
 
         if (dto.entry <= 0 || dto.sl <= 0 || dto.tp <= 0)
-        throw new IllegalArgumentException("Entry, SL, TP must be positive numbers");
+            throw new IllegalArgumentException("Entry, SL, TP must be positive numbers");
 
         double risk;
         double reward;
