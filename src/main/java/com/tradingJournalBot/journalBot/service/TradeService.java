@@ -236,19 +236,33 @@ public class TradeService {
 
         List<Trade> trades = repo.findByChatId(chatId);
 
-        long now = System.currentTimeMillis();
+        if (trades.size() < 5) return null; // not enough data
 
         long recentTrades = trades.stream()
-                .filter(t -> t.getCreatedAt() != null)
-                .filter(t -> now - t.getCreatedAt().getTime() < (10 * 60 * 1000)) // last 10 mins
+                .sorted((a, b) -> b.getCreatedAt().compareTo(a.getCreatedAt()))
+                .limit(5)
                 .count();
 
         if (recentTrades >= 5) {
-            return "⚠️ You're trading too frequently in a short time. Possible revenge trading.";
+            return "⚠️ You're trading too frequently. Possible revenge trading.";
         }
 
         return null;
     }
+
+//        long now = System.currentTimeMillis();
+//
+//        long recentTrades = trades.stream()
+//                .filter(t -> t.getCreatedAt() != null)
+//                .filter(t -> now - t.getCreatedAt().getTime() < (10 * 60 * 1000)) // last 10 mins
+//                .count();
+//
+//        if (recentTrades >= 5) {
+//            return "⚠️ You're trading too frequently in a short time. Possible revenge trading.";
+//        }
+//
+//        return null;
+//    }
 
 
     // ✅ STEP 5: REPORT GENERATOR
