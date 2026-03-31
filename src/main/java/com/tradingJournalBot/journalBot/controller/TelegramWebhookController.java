@@ -31,7 +31,7 @@ public class TelegramWebhookController {
                                @RequestBody  Map<String, Object> update) {
 
         System.out.println(" webhook hit");
-        System.out.println("Incoming Secret: " + incomingSecret);
+
 
         if (webhookSecret != null && !webhookSecret.isEmpty()){
             if (incomingSecret == null || ! webhookSecret.equals(incomingSecret)){
