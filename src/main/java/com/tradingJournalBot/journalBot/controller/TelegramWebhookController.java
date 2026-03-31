@@ -5,8 +5,10 @@ import com.tradingJournalBot.journalBot.service.ParserService;
 import com.tradingJournalBot.journalBot.service.TelegramService;
 import com.tradingJournalBot.journalBot.service.TradeService;
 import lombok.Data;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.Map;
@@ -19,11 +21,24 @@ public class TelegramWebhookController {
     private final TradeService tradeService;
     private final TelegramService telegramService;
 
+    @Value("${TELEGRAM_WEBHOOK_SECRET:}")
+    private String webhookSecret ;
+
 
     @PostMapping("/webhook")
-    public void handleUpdate(@RequestBody Map<String, Object> update) {
+    public void handleUpdate(@RequestHeader(value = "X-Telegram-Bot-Api-Secret-Token", required = false)
+                                 String incomingSecret,
+                               @RequestBody  Map<String, Object> update) {
 
         System.out.println(" webhook hit");
+        System.out.println("Incoming Secret: " + incomingSecret);
+
+        if (webhookSecret != null && !webhookSecret.isEmpty()){
+            if (incomingSecret == null || ! webhookSecret.equals(incomingSecret)){
+                System.out.println("Unauthorized webhook request blocked");
+                return;
+            }
+        }
 
         Map<String, Object> message = (Map<String, Object>) update.get("message");
         if (message == null) return;

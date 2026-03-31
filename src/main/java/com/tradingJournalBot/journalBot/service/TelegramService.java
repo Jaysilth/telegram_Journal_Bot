@@ -18,6 +18,8 @@ public class TelegramService {
     @Value("${TELEGRAM_BOT_TOKEN:default_token}")
     private String botToken ;
 
+
+
     private final RestTemplate restTemplate;
 
     public void sendMessage( Long chatId, String text) {
