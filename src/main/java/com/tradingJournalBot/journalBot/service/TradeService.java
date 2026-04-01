@@ -82,6 +82,17 @@ public class TradeService {
         return trade.getResultType() == ResultType.SL;
     }
 
+    public boolean isDuplicateTrade(ParsedTradeDTO dto, Long chatId) {
+
+        List<Trade> trades = repo.findByChatId(chatId);
+
+        return trades.stream().anyMatch(t ->
+                t.getSymbol().equalsIgnoreCase(dto.getSymbol()) &&
+                        t.getEntryPrice().equals(dto.getEntry()) &&
+                        t.getStopLoss().equals(dto.getSl()) &&
+                        t.getTakeProfit().equals(dto.getTp())
+        );
+    }
 
 
     public Trade saveTrade(ParsedTradeDTO dto, Long chatId) {
@@ -94,6 +105,11 @@ public class TradeService {
         if (dto.resultType != ResultType.MISSED_ENTRY){
             rr= calculateRR(dto);
             pnl = calculatePnL(dto);
+        }
+
+        // ✅ ADD BEFORE SAVING
+        if (isDuplicateTrade(dto, chatId)) {
+            throw new IllegalArgumentException("Duplicate trade detected");
         }
 
 
@@ -136,10 +152,11 @@ public class TradeService {
             }
         }
 
+
+
         return savedTrade;
 
     }
-
 
 
     // ✅ STEP 1 FIXED RR (SAFE + VALIDATED)
@@ -491,9 +508,6 @@ public class TradeService {
         emotionReport.append("⚠️ Worst Emotion: ")
                 .append(worstEmotion)
                 .append("\n");
-
-
-
 
 
         return "📊 Trading Report\n\n"

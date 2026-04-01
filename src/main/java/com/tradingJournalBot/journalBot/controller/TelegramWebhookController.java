@@ -11,6 +11,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RestController;
 import java.util.concurrent.ConcurrentHashMap;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Map;
 
@@ -22,12 +24,12 @@ public class TelegramWebhookController {
     private final TradeService tradeService;
     private final TelegramService telegramService;
 
+    private static final Logger log = LoggerFactory.getLogger(TradeService.class);
+
     private final Map<Long, Long> userLastRequestTime = new ConcurrentHashMap<>();
 
     @Value("${TELEGRAM_WEBHOOK_SECRET:}")
     private String webhookSecret ;
-
-
 
 
     @PostMapping("/webhook")
@@ -35,13 +37,7 @@ public class TelegramWebhookController {
                                  String incomingSecret,
                                @RequestBody  Map<String, Object> update) {
 
-
-
-        System.out.println(" webhook hit");
-
-
-
-
+        log.info(" webhook hit");
 
         if (webhookSecret != null && !webhookSecret.isEmpty()){
             if (incomingSecret == null || ! webhookSecret.equals(incomingSecret)){

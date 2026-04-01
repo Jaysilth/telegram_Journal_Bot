@@ -21,11 +21,13 @@ public class Trade {
 
     private Long chatId;
 
+    @Column(nullable = false)
     private String symbol;
 
     @Enumerated(EnumType.STRING)
     private Direction direction;
 
+    @Column(nullable = false)
     private Double entryPrice;
     private Double stopLoss;
     private Double takeProfit;
